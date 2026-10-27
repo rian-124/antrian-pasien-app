@@ -1,0 +1,199 @@
+import { getToken } from "@/lib/authStorage";
+import { User } from "@/classes/User";
+import { mockUsers, mockRoles, mockOutlets } from "@/mocks";
+import { API_URL } from "@/lib/utils";
+
+const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === "true";
+
+export async function fetchUsers(): Promise<User[]> {
+  if (USE_MOCK) {
+    return mockUsers;
+  }
+
+  const token = getToken();
+  if (!token) {
+    throw new Error("No auth token found");
+  }
+
+  const res = await fetch(`${API_URL}/api/users`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    throw new Error(`HTTP error! status: ${res.status}`);
+  }
+
+  const json = await res.json();
+  console.log("Response JSON:", json);
+
+  if (json.status === 200 && Array.isArray(json.data)) {
+    return json.data.map((user: any) => {
+      return new User(
+        user.id,
+        user.username,
+        user.name,
+        Number(user.outlet_id),
+        user.outlets?.nama_outlet || `Outlet ${user.outlet_id}`,
+        Number(user.role_id)
+      );
+    });
+  }
+
+  throw new Error("Failed to fetch users: Invalid response format");
+}
+
+export async function deleteUser(userId: number) {
+  if (USE_MOCK) {
+    return;
+  }
+
+  const res = await fetch(`${API_URL}/api/users/${userId}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${getToken()}`,
+    },
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json();
+    throw new Error(errorData.message || "Failed to delete user");
+  }
+}
+
+export async function fetchRoles() {
+  if (USE_MOCK) {
+    return mockRoles;
+  }
+
+  const token = getToken();
+
+  const res = await fetch(`${API_URL}/api/roles`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  const json = await res.json();
+
+  if (json.status === 200 && Array.isArray(json.data)) {
+    return json.data;
+  }
+
+  throw new Error("Failed to fetch roles");
+}
+
+export async function fetchOutlets() {
+  if (USE_MOCK) {
+    return mockOutlets;
+  }
+
+  const token = getToken();
+
+  const res = await fetch(`${API_URL}/api/outlet`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  const json = await res.json();
+
+  if (json.status === 200 && Array.isArray(json.data)) {
+    return json.data;
+  }
+
+  if (json.data?.status === 200 && Array.isArray(json.data.data)) {
+    return json.data.data;
+  }
+
+  throw new Error("Failed to fetch outlets - Unexpected response format");
+}
+
+export async function updateUser(updatedUser: User) {
+  if (USE_MOCK) {
+    return { status: 200, message: "Mock update success" };
+  }
+
+  const token = getToken();
+
+  const res = await fetch(`${API_URL}/api/users/${updatedUser.id}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      username: updatedUser.username,
+      name: updatedUser.name,
+      outlet_id: Number(updatedUser.outlet_id),
+      role_id: Number(updatedUser.role_id),
+      loket_id:
+        updatedUser.loket_id !== undefined
+          ? Number(updatedUser.loket_id)
+          : null,
+    }),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    try {
+      const errorJson = errorText ? JSON.parse(errorText) : {};
+      throw new Error(
+        errorJson.message || `Failed to update user: HTTP ${res.status}`
+      );
+    } catch (e) {
+      throw new Error(errorText || `Failed to update user: HTTP ${res.status}`);
+    }
+  }
+
+  const json = await res.json();
+  console.log("Update User Success:", json);
+  return json;
+}
+
+export async function createUser(userData: {
+  username: string;
+  password: string;
+  name: string;
+  role_id: number;
+  outlet_id: number;
+}) {
+  if (USE_MOCK) {
+    return { status: 200, message: "Mock create success" };
+  }
+
+  const token = getToken();
+  const res = await fetch(`${API_URL}/api/users`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(userData),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    try {
+      const errorJson = errorText ? JSON.parse(errorText) : {};
+      throw new Error(
+        errorJson.message || `Failed to create user: HTTP ${res.status}`
+      );
+    } catch (e) {
+      throw new Error(errorText || `Failed to create user: HTTP ${res.status}`);
+    }
+  }
+
+  const json = await res.json();
+  return json;
+}
+
+export const UserService = {
+  fetchUsers,
+  deleteUser,
+  fetchRoles,
+  fetchOutlets,
+  updateUser,
+  createUser,
+};

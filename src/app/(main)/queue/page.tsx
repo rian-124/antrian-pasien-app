@@ -27,7 +27,7 @@ export default function QueuePage() {
     const token = localStorage.getItem("access_token");
     if (!token) return;
 
-    const socket: Socket = io("http://192.168.50.222:5000", {
+    const socket: Socket = io("${process.env.NEXT_PUBLIC_API_URL}", {
       auth: { token },
       transports: ["websocket"],
     });
@@ -116,10 +116,10 @@ export default function QueuePage() {
       if (!token) throw new Error("No access token");
 
       const [patientRes, loketRes] = await Promise.all([
-        fetch("http://192.168.50.222:5000/api/antrian-pasien", {
+        fetch("${process.env.NEXT_PUBLIC_API_URL}/api/antrian-pasien", {
           headers: { Authorization: `Bearer ${token}` },
         }),
-        fetch("http://192.168.50.222:5000/api/lokets", {
+        fetch("${process.env.NEXT_PUBLIC_API_URL}/api/lokets", {
           headers: { Authorization: `Bearer ${token}` },
         }),
       ]);
@@ -185,7 +185,7 @@ export default function QueuePage() {
 
     try {
       const res = await fetch(
-        `http://192.168.50.222:5000/api/antrian-pasien/${patient.id}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/antrian-pasien/${patient.id}`,
         {
           method: "PATCH",
           headers: {
@@ -232,7 +232,7 @@ export default function QueuePage() {
     if (!token) return;
 
     try {
-      const res = await fetch("http://192.168.50.222:5000/api/users/loket", {
+      const res = await fetch("${process.env.NEXT_PUBLIC_API_URL}/api/users/loket", {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -269,7 +269,7 @@ export default function QueuePage() {
 
     try {
       const res = await fetch(
-        "http://192.168.50.222:5000/api/users/loket/checkout",
+        "${process.env.NEXT_PUBLIC_API_URL}/api/users/loket/checkout",
         {
           method: "PUT",
           headers: { Authorization: `Bearer ${token}` },
@@ -299,7 +299,7 @@ export default function QueuePage() {
 
     if (recallCount >= 2) {
       await fetch(
-        `http://192.168.50.222:5000/api/antrian-pasien/${patient.id}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/antrian-pasien/${patient.id}`,
         {
           method: "PATCH",
           headers: {
@@ -314,7 +314,7 @@ export default function QueuePage() {
       return;
     }
 
-    await fetch(`http://192.168.50.222:5000/api/antrian-pasien/${patient.id}`, {
+    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/antrian-pasien/${patient.id}`, {
       method: "PATCH",
       headers: {
         Authorization: `Bearer ${token}`,

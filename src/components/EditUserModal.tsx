@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { User } from "@/classes/User";
 import { Outlet, Role } from "@/classes/UserModel";
-import { UserService } from "@/classes/UserService";
+import { UserService } from "@/services/userService";
 
 interface Props {
   isOpen: boolean;
@@ -55,7 +55,8 @@ export default function EditUserModal({
 
   useEffect(() => {
     const token = localStorage.getItem("access_token");
-    fetch("http://192.168.50.222:5000/api/lokets", {
+    const API_URL2 = process.env.NEXT_PUBLIC_API_URL;
+    fetch(`${API_URL2}/api/lokets`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((res) => res.json())

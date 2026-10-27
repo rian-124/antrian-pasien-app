@@ -1,6 +1,6 @@
 "use client";
 
-import { UserService } from "@/classes/UserService";
+import { UserService } from "@/services/userService";
 import { Role, Outlet } from "@/classes/UserModel";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -51,7 +51,8 @@ export default function AddUserModal({
 
   useEffect(() => {
     const token = localStorage.getItem("access_token");
-    fetch("http://192.168.50.222:5000/api/lokets", {
+    const API_URL2 = process.env.NEXT_PUBLIC_API_URL;
+    fetch(`${API_URL2}/api/lokets`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },

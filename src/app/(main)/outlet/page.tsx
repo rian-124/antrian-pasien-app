@@ -23,7 +23,16 @@ export default function OutletPage() {
   const router = useRouter();
 
   useEffect(() => {
-    fetch("http://192.168.50.222:5000/api/outlet")
+    const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === "true";
+    if (USE_MOCK) {
+      import("@/mocks").then((m) => {
+        setOutlets(m.mockOutlets);
+      });
+      return;
+    }
+
+    const API_URL = process.env.NEXT_PUBLIC_API_URL;
+    fetch(`${API_URL}/api/outlet`)
       .then((res) => res.json())
       .then((json) => setOutlets(json.data || []));
   }, []);

@@ -16,7 +16,7 @@ export default function ForgotPasswordForm() {
 
     try {
       const res = await fetch(
-        "http://192.168.50.222:5000/api/users/check-username",
+        `${process.env.NEXT_PUBLIC_API_URL}/api/users/check-username`,
         {
           method: "POST",
           headers: {

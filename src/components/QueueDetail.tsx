@@ -35,7 +35,7 @@ export default function QueueDetail({
     }
 
     try {
-      const res = await fetch(`http://192.168.50.222:5000/api/${endpoint}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/${endpoint}`, {
         method,
         headers: {
           Authorization: `Bearer ${token}`,

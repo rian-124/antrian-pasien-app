@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { useRouter } from 'next/navigation';
-import { AuthService } from '@/classes/AuthService'; 
+import { logout } from "@/services/authService"; 
 
 export default function Header() {
   const pathname = usePathname();
@@ -53,7 +53,7 @@ export default function Header() {
 
   const handleLogout = () => {
     if (confirm('Are you sure you want to logout?')) {
-      AuthService.logout();
+      logout();
       localStorage.removeItem('user');
       router.push('/');
     }

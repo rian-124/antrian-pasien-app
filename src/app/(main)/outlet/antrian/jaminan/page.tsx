@@ -1,41 +1,30 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import QueueCard from "@/components/QueueCard";
-import QueueHeader from "@/components/QueueHeader";
-import { ArrowLeft } from "lucide-react";
-import Script from "next/script";
 
 declare interface Window {
   BrowserPrint?: any;
 }
+import { useRouter } from "next/navigation";
+import QueueCard from "@/components/QueueCard";
+import QueueHeader from "@/components/QueueHeader";
+import { ArrowLeft } from "lucide-react";
 
-export default function AntrianPage() {
+import Script from "next/script";
+
+export default function JaminanPage() {
   const router = useRouter();
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [penjamins, setPenjamins] = useState<{ id: number; nama: string }[]>(
+    []
+  );
   const [message, setMessage] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
   const [printer, setPrinter] = useState<any>(null);
   const [printerStatus, setPrinterStatus] = useState<string>(
     "Mencari printer Zebra..."
   );
-
-  const options = [
-    { title: "UMUM", image: "/icons/umum.svg", jenis: "UMUM" },
-    { title: "JAMINAN", image: "/icons/jaminan.svg", jenis: "JAMINAN" },
-  ];
-
-  const handleEnterFullscreen = () => {
-    if (
-      !document.fullscreenElement &&
-      document.documentElement.requestFullscreen
-    ) {
-      document.documentElement.requestFullscreen().catch((err) => {
-        console.warn("Fullscreen error:", err);
-      });
-    }
-  };
-
+  // Inisialisasi printer Zebra
   useEffect(() => {
     // @ts-ignore
     if (window.BrowserPrint) {
@@ -65,69 +54,104 @@ export default function AntrianPage() {
     const handleFullscreenChange = () => {
       setIsFullscreen(document.fullscreenElement !== null);
     };
+
     document.addEventListener("fullscreenchange", handleFullscreenChange);
     return () => {
       document.removeEventListener("fullscreenchange", handleFullscreenChange);
     };
   }, []);
 
-  const handleCardClick = async (jenis: string) => {
-    if (jenis === "UMUM") {
-      await createAntrian(jenis);
-    } else if (jenis === "JAMINAN") {
-      router.push("/outlet/antrian/jaminan");
+  useEffect(() => {
+    fetchPenjamins();
+  }, []);
+
+  useEffect(() => {
+    if (message) {
+      const timer = setTimeout(() => {
+        setMessage(null);
+        if (message.includes("berhasil dibuat")) {
+          router.push("/outlet/antrian");
+        }
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [message, router]);
+
+  const fetchPenjamins = async () => {
+    try {
+      const res = await fetch("${process.env.NEXT_PUBLIC_API_URL}/api/penjamins");
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+      const json = await res.json();
+      const filtered = (json.data || []).filter(
+        (p: any) => p.jenis_registrasi_id === 2
+      );
+      setPenjamins(filtered);
+    } catch (err) {
+      console.error("Gagal mengambil data penjamin:", err);
+      setMessage("Gagal mengambil daftar penjamin.");
     }
   };
 
-  const createAntrian = async (jenis: string) => {
+  const createAntrian = async (penjamin_id: number) => {
+    setLoading(true);
+    const outletId =
+      typeof window !== "undefined"
+        ? localStorage.getItem("selected_outlet_id")
+        : null;
+    if (!outletId) {
+      setMessage("Outlet belum dipilih.");
+      setLoading(false);
+      return;
+    }
     try {
-      const outletId =
-        typeof window !== "undefined"
-          ? localStorage.getItem("selected_outlet_id")
-          : null;
-      if (!outletId) {
-        setMessage("Outlet belum dipilih.");
-        return;
-      }
       const res = await fetch(
-        `http://192.168.50.222:5000/api/pasiens/${outletId}/outlet`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/pasiens/${outletId}/outlet`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("access_token")}`,
           },
-          body: JSON.stringify({ jenis }),
+          body: JSON.stringify({
+            jenis: "JAMINAN",
+            penjamin_id: penjamin_id,
+          }),
         }
       );
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
 
       const json = await res.json();
       const nomorAntrian = json.data.AntrianPasiens[0]?.nomor_Antrian;
       setMessage(`Nomor antrian ${nomorAntrian} berhasil dibuat.`);
-
-      // Print menggunakan printer Zebra yang sudah ready
-      printNomorAntrian(nomorAntrian, jenis);
+      printNomorAntrian(nomorAntrian);
     } catch (err) {
       console.error("Gagal membuat antrian pasien:", err);
       setMessage("Terjadi kesalahan saat membuat antrian.");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const printNomorAntrian = (nomor: string, jenis: string) => {
+  // Fungsi print Zebra Browser Print
+  const printNomorAntrian = (nomor: string) => {
     if (!printer) {
       setMessage(
         "Printer Zebra belum siap. Pastikan extension dan printer sudah terdeteksi."
       );
       return;
     }
+    // Susunan dan penataan sama persis dengan UMUM
     const zpl = `^XA
 ^PW203
 ^LL203
 ^CF0,30
 ^FO0,70^FB203,1,0,C,0^FDANTRIAN LAB^FS
 ^CF0,20
-^FO0,110^FB203,1,0,C,0^FDJenis: ${jenis}^FS
+^FO0,110^FB203,1,0,C,0^FDJenis: JAMINAN^FS
 ^CF0,40
 ^FO0,150^FB203,1,0,C,0^FD${nomor}^FS
 ^XZ`;
@@ -136,49 +160,49 @@ export default function AntrianPage() {
     });
   };
 
-  useEffect(() => {
-    if (message) {
-      const timer = setTimeout(() => setMessage(null), 3000);
-      return () => clearTimeout(timer);
+  const handleEnterFullscreen = () => {
+    if (
+      !document.fullscreenElement &&
+      document.documentElement.requestFullscreen
+    ) {
+      document.documentElement.requestFullscreen().catch((err) => {
+        console.warn("Fullscreen error:", err);
+      });
     }
-  }, [message]);
-
-  const outletId =
-    typeof window !== "undefined"
-      ? localStorage.getItem("selected_outlet_id")
-      : null;
+  };
 
   return (
     <div className="w-full h-screen flex flex-col bg-white relative">
       <QueueHeader />
 
-      {!isFullscreen && (
-        <div className="absolute top-[72px] left-4">
-          <button
-            onClick={() => router.push("/outlet")}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-2xl shadow-sm transition"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span className="font-medium">Kembali</span>
-          </button>
-        </div>
-      )}
+      <div className="absolute top-[72px] left-4">
+        <button
+          onClick={() => router.push("/outlet/antrian")}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-2xl shadow-sm transition"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span className="font-medium">Kembali</span>
+        </button>
+      </div>
 
       <main className="flex-1 flex flex-col items-center justify-center">
-        <h1 className="text-2xl font-semibold mb-4">Laboratorium PK & MK</h1>
-        <div className="mb-2 text-sm text-gray-500">{printerStatus}</div>
-        <div className="flex gap-6 flex-wrap justify-center mb-4">
-          {options.map((option, i) => (
+        <h1 className="text-2xl font-semibold mb-10">Pilih Jenis Jaminan</h1>
+        <div className="flex gap-6 flex-wrap justify-center">
+          {penjamins.map((penjamin, i) => (
             <div
               key={i}
-              onClick={() => handleCardClick(option.jenis)}
+              onClick={() => createAntrian(penjamin.id)}
               className="cursor-pointer"
             >
-              <QueueCard title={option.title} image={option.image} />
+              <QueueCard
+                title={penjamin.nama}
+                image={`/icons/doctor-${(i % 4) + 1}.svg`}
+              />
             </div>
           ))}
         </div>
 
+        <div className="mb-2 text-sm text-gray-500">{printerStatus}</div>
         {message && (
           <div className="mt-4 p-3 bg-green-100 text-green-700 rounded shadow">
             {message}
@@ -194,7 +218,6 @@ export default function AntrianPage() {
           className="w-10 h-10 fixed bottom-4 right-4 opacity-80 hover:opacity-100 transition cursor-pointer"
         />
       )}
-
       <Script
         src="/js/BrowserPrint-3.0.216.min.js"
         strategy="beforeInteractive"
